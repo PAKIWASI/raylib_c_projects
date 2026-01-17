@@ -3,113 +3,116 @@
 
 
 
-typedef struct {
-    Rectangle rect;
-    float     vx;
-    float     vy;
-} Ball;
 
 
-void pong_init(Ball* b, Rectangle* lpaddle, Rectangle* rpaddle)
+void ball_reset(Ball* b)
 {
-    InitWindow((int)WIDTH, (int)HEIGHT, TITLE);
-    SetTargetFPS(60);
+    b->pos = (V2int){NUM_CELL_X / 2, NUM_CELL_Y / 2};
+    b->v   = (Vector2){BALL_SPEED, BALL_SPEED};
+}
 
-    // init the ball (centered)
-    b->rect.x      = (WIDTH / 2.0f) - (BALL_SIZE / 2.0f);
-    b->rect.y      = (HEIGHT / 2.0f) - (BALL_SIZE / 2.0f);
-    b->rect.width  = BALL_SIZE;
-    b->rect.height = BALL_SIZE;
-    b->vx          = BALL_SPEED;
-    b->vy          = BALL_SPEED;
 
-    // init left paddle
-    lpaddle->x      = PADDLE_OFFSET;
-    lpaddle->y      = (HEIGHT / 2.0f) - (PADDLE_HEIGHT / 2.0f);
-    lpaddle->width  = PADDLE_WIDTH;
-    lpaddle->height = PADDLE_HEIGHT;
+void pong_init(Ball* b, Paddle* lp, Paddle* rp)
+{
+    InitWindow(WIDTH, HEIGHT, TITLE);
+    SetTargetFPS(FPS);
 
-    // init right paddle
-    rpaddle->x      = WIDTH - PADDLE_OFFSET - PADDLE_WIDTH;
-    rpaddle->y      = (HEIGHT / 2.0f) - (PADDLE_HEIGHT / 2.0f);
-    rpaddle->width  = PADDLE_WIDTH;
-    rpaddle->height = PADDLE_HEIGHT;
+    // init ball (centre)
+    ball_reset(b);
+
+    // init paddles
+    lp->pos = (V2int){L_POS_X, NUM_CELL_Y / 2};              // 0 is first cell
+    rp->pos = (V2int){R_POS_X, NUM_CELL_Y / 2}; // NUM_CELL_X - 1 is final cell
+    lp->score = 0;
+    rp->score = 0;
 }
 
 
 void ball_update(Ball* b)
 {
-    float dt = GetFrameTime();
+    // handle vertical boundry
+    if (b->pos.y < 0) {
+        b->pos.y *= -1;
+    }
 
-    b->rect.x += b->vx * dt;
-    b->rect.y += b->vy * dt;
+    if (b->pos.y >= NUM_CELL_Y) {
+        b->pos.y *= -1;
+    }
+}
 
-    // bounce off top and bottom walls
-    if (b->rect.y <= 0.0f || b->rect.y + b->rect.height >= HEIGHT) { b->vy *= -1.0f; }
-
-    // reset ball if it goes off left or right edge
-    if (b->rect.x + b->rect.width < 0 || b->rect.x > WIDTH) {
-        b->rect.x = (WIDTH / 2.0f) - (BALL_SIZE / 2.0f);
-        b->rect.y = (HEIGHT / 2.0f) - (BALL_SIZE / 2.0f);
-        b->vx     = BALL_SPEED * (b->vx > 0 ? -1.0f : 1.0f); // reverse direction
+void score_check(Ball* b, Paddle* lp, Paddle* rp)
+{
+    // handle horizontal boundry (scoring)
+    if (b->pos.x < 0) { // rp scored
+        rp->score++;
+        ball_reset(b);
+    }
+    if (b->pos.x >= NUM_CELL_X) { // lp scored
+        lp->score++;
+        ball_reset(b);
     }
 }
 
 
-void paddle_update(Ball* b, Rectangle* paddle)
-{
-    // clamp paddles to screen bounds
-    if (paddle->y < 0.0f) { paddle->y = 0.0f; }
-    if (paddle->y + paddle->height > HEIGHT) { paddle->y = HEIGHT - paddle->height; }
 
-    // handle ball collision with paddles
-    if (CheckCollisionRecs(b->rect, *paddle)) {
-        if (b->vx < 0) {
-            // hit left paddle
-            b->vx     = BALL_SPEED;
-            b->rect.x = paddle->x + paddle->width;
-        } else {
-            // hit right paddle
-            b->vx     = -BALL_SPEED;
-            b->rect.x = paddle->x - b->rect.width;
+void paddle_update(Paddle* paddle)
+{
+    // handle clamping
+    if (paddle->pos.y < 0) { paddle->pos.y = 0; }
+    if (paddle->pos.y >= NUM_CELL_Y) { paddle->pos.y = NUM_CELL_Y - 1; }
+}
+
+void paddle_ball_collision(Ball* b, Paddle* p)
+{
+    // handle collision 
+    // make a paddle rect for collition (convert to screen cords)
+    Rectangle paddle = (Rectangle){(float)p->pos.x * CELL, (float)p->pos.y * CELL, PADDLE_WIDTH, PADDLE_HEIGHT};
+    Vector2 ball = (Vector2){(float)b->pos.x * CELL, (float)b->pos.y * CELL};
+
+    if (CheckCollisionCircleRec(ball, BALL_RADIUS, paddle)) {
+        if (p->pos.x == L_POS_X) { // left paddle
+            b->v.x *= BALL_SPEED; 
+        }
+        if (p->pos.x == R_POS_X) { // right paddle
+            b->v.x *= -BALL_SPEED;
         }
     }
 }
 
+// TODO: where to use dt?
 
-void pong_update(Ball* b, Rectangle* lpaddle, Rectangle* rpaddle)
+void pong_update(Ball* b, Paddle* lp, Paddle* rp)
 {
-    // left paddle controls (W/S)
-    if (IsKeyDown(KEY_W)) { lpaddle->y -= PADDLE_SPEED; }
-    if (IsKeyDown(KEY_S)) { lpaddle->y += PADDLE_SPEED; }
+    // get keys, update paddle positions
+    if (IsKeyDown(KEY_W)) { lp->pos.y++; }
+    if (IsKeyDown(KEY_S)) { lp->pos.y--; }
+    if (IsKeyDown(KEY_I)) { lp->pos.y++; }
+    if (IsKeyDown(KEY_K)) { lp->pos.y--; }
 
-    // right paddle controls (I/K)
-    if (IsKeyDown(KEY_I)) { rpaddle->y -= PADDLE_SPEED; }
-    if (IsKeyDown(KEY_K)) { rpaddle->y += PADDLE_SPEED; }
+    paddle_update(lp);
+    paddle_update(rp);
 
-    // update paddles
-    paddle_update(b, lpaddle);
-    paddle_update(b, rpaddle);
-
-    // update ball position
     ball_update(b);
+
+    paddle_ball_collision(b, lp);
+    paddle_ball_collision(b, rp);
+
+    score_check(b, lp, rp);
 }
 
 
-void pong_draw(Ball* b, Rectangle* lpaddle, Rectangle* rpaddle)
+
+void pong_draw(Ball* b, Paddle* lp, Paddle* rp) 
 {
     BeginDrawing();
-    ClearBackground(BLACK);
+    ClearBackground(BLACK); 
+    
+    // draw ball
+    DrawCircle(b->pos.x * (int)CELL, b->pos.y * (int)CELL, BALL_RADIUS, RED);
 
     // draw paddles
-    DrawRectangleRec(*lpaddle, WHITE);
-    DrawRectangleRec(*rpaddle, WHITE);
-
-    // draw ball
-    DrawRectangleRec(b->rect, WHITE);
-
-    // draw centre line
-    DrawLine((int)WIDTH / 2, 0, (int)WIDTH / 2, HEIGHT, WHITE);
+    DrawRectangle(lp->pos.x * CELL, lp->pos.y * CELL, PADDLE_WIDTH, PADDLE_HEIGHT, RAYWHITE);
+    DrawRectangle(rp->pos.x * CELL, rp->pos.y * CELL, PADDLE_WIDTH, PADDLE_HEIGHT, RAYWHITE);
 
     EndDrawing();
 }
@@ -123,18 +126,20 @@ void pong_end(void)
 
 void pong_run(void)
 {
-    Ball      b;
-    Rectangle lpaddle;
-    Rectangle rpaddle;
+    Ball   b;
+    Paddle lp;
+    Paddle rp;
 
-    pong_init(&b, &lpaddle, &rpaddle);
+    pong_init(&b, &lp, &rp);
 
     while (!WindowShouldClose()) {
 
-        pong_update(&b, &lpaddle, &rpaddle);
+        pong_update(&b, &lp, &rp);
 
-        pong_draw(&b, &lpaddle, &rpaddle);
+        pong_draw(&b, &lp, &rp);
     }
 
     pong_end();
 }
+
+
