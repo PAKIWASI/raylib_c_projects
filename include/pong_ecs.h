@@ -49,6 +49,7 @@ typedef struct {
     Rectangle bounds;
 } Collision;
 
+
 // ECS World - stores all entities and components
 typedef struct {
     // Entity management
@@ -69,6 +70,7 @@ typedef struct {
     float width;
     float height;
 } World;
+
 
 // === Entity Management ===
 

@@ -10,14 +10,14 @@ typedef uint32_t u32 ;
 #define TITLE  "pong"
 #define FPS    60
 
-#define CELL       20.0f        // base size
+#define CELL       10.0f        // base size unit
 
-#define PADDLE_WIDTH  (CELL * 3)
-#define PADDLE_HEIGHT (CELL * 10)
-#define PADDLE_SPEED  (CELL * 15) // pixels per second 
+#define PADDLE_WIDTH  (CELL * 2)
+#define PADDLE_HEIGHT (CELL * 25)
+#define PADDLE_SPEED  (CELL * 25) // pixels per second 
 
 #define BALL_RADIUS (CELL * 2)
-#define BALL_SPEED  (CELL * 25) // pixels per second
+#define BALL_SPEED  (CELL * 50) // pixels per second
                                
 
 typedef struct {
@@ -31,10 +31,10 @@ typedef struct {
 
 typedef struct {
     Ball ball;
-    Paddle left_paddle;
-    Paddle right_paddle;
-    u32 l_score;
-    u32 r_score;
+    Paddle lpaddle;
+    Paddle rpaddle;
+    u32 lscore;
+    u32 rscore;
     bool paused;
 } GameState;
 

@@ -1,8 +1,7 @@
-#include "pong_ecs.h"
+#include "pong.h"
 
 
 int main(void) 
 {
-    // pong_run();
-    pong_ecs_run();
+    pong_run();
 }
