@@ -1,17 +1,33 @@
 #include "pong.h"
 #include "raylib.h"
+#include <time.h>
 
 
 // TODO: 
 // 1. randomise ball reset
-// 2. increase speed on each score ?
-// 3. handle paddle corder collision
+// 2. increase speed on each score ? acceleration ?
+// 3. handle paddle corner collision
 
+
+void random_init(void)
+{
+    time_t t;
+    time(&t);
+    SetRandomSeed((u32)t); 
+
+}
 
 void ball_reset(Ball* ball)
 {
-    ball->pos = (Vector2){ WIDTH / 2.f, HEIGHT/ 2.f };
-    ball->v = (Vector2){ BALL_SPEED, BALL_SPEED };
+    float y = (float) GetRandomValue(0, HEIGHT);
+    ball->pos = (Vector2){ WIDTH / 2.f, y}; //HEIGHT/ 2.f };
+
+    // TODO: fix ball going horizontal
+    float vx = (float) GetRandomValue(-1, 1);
+    if (vx == 0) { vx = BALL_SPEED; }
+    float vy = (float) GetRandomValue(-1, 1);
+    if (vy == 0) { vy = BALL_SPEED; }
+    ball->v = (Vector2){ BALL_SPEED * vx, BALL_SPEED * vy };
 }
 
 void pong_init(GameState* game)
@@ -20,6 +36,7 @@ void pong_init(GameState* game)
     SetTargetFPS(FPS);
 
     // init ball (center)
+    random_init();
     ball_reset(&game->ball);
 
     // init paddles (with offset = CELL)
@@ -35,12 +52,15 @@ void pong_init(GameState* game)
 
 void pong_update(GameState* game)
 {
+    // TODO: not working?
+    if (IsKeyPressed(KEY_P)) { game->paused = !game->paused; }
+    if (game->paused) { return; }
+
     Vector2* lp = &game->lpaddle.pos;
     Vector2* rp = &game->rpaddle.pos;
     Ball* b = &game->ball;
     const float dt = GetFrameTime();
 
-    if (IsKeyPressed(KEY_P)) { game->paused = !game->paused; }
 
     // update paddle pos based on key input
     if (IsKeyDown(KEY_UP))   { lp->y -= PADDLE_SPEED * dt;}
@@ -52,9 +72,9 @@ void pong_update(GameState* game)
     // validate paddle pos (clamping)
     // no vertical offset
     if (lp->y < 0) { lp->y = 0; } 
-    if (lp->y + (PADDLE_HEIGHT / 2) > WIDTH) { lp->y = WIDTH; } 
+    if (lp->y + PADDLE_HEIGHT > HEIGHT) { lp->y = HEIGHT - PADDLE_HEIGHT; } 
     if (rp->y < 0) { rp->y = 0; } 
-    if (rp->y + (PADDLE_HEIGHT / 2) > WIDTH) { rp->y = WIDTH; } 
+    if (rp->y + PADDLE_HEIGHT > HEIGHT) { rp->y = HEIGHT - PADDLE_HEIGHT; } 
 
 
     // update ball position based on velocity
@@ -94,6 +114,7 @@ void pong_update(GameState* game)
 
 void pong_draw(GameState* game)
 {
+    if (game->paused) { return; }
     BeginDrawing();
     ClearBackground(BLACK);
 
