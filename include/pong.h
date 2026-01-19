@@ -10,7 +10,7 @@ typedef uint32_t u32 ;
 #define TITLE  "pong"
 #define FPS    60
 
-#define CELL       10.0f        // base size unit
+#define CELL   10.0f        // base size unit
 
 #define PADDLE_WIDTH  (CELL * 2)
 #define PADDLE_HEIGHT (CELL * 25)
@@ -22,7 +22,8 @@ typedef uint32_t u32 ;
 
 typedef struct {
     Vector2 pos; // pixel positins
-    Vector2 v;   // direction * speed
+    Vector2 dir;   // between [-1, 1]. direction only 
+    //Vector2 v;      // this is the scalar speed in each dir
 } Ball;
 
 typedef struct {
@@ -30,29 +31,15 @@ typedef struct {
 } Paddle;
 
 typedef struct {
-    Ball ball;
-    Paddle lpaddle;
-    Paddle rpaddle;
-    u32 lscore;
-    u32 rscore;
-    bool paused;
+    Ball    ball;
+    Paddle  lpaddle;
+    Paddle  rpaddle;
+    u32     lscore;
+    u32     rscore;
+    bool    paused;
 } GameState;
 
 
 
 void pong_run(void);
 
-
-/* delta time for paddle/ball (making frame rate independent)
-float dt = GetFrameTime();
-paddle.pos.y += PADDLE_SPEED * dt;
-ball.pos = Vector2Add(ball.pos, Vector2Scale(ball.v, dt));
-
-
-| Quantity          | Unit             |
-| ----------------- | ---------------- |
-| Position          | pixels           |
-| Speed             | pixels / second  |
-| Acceleration      | pixels / second² |
-| Delta time (`dt`) | seconds          |
-*/

@@ -1,33 +1,66 @@
 #include "pong.h"
 #include "raylib.h"
+#include <math.h>
 #include <time.h>
+
 
 
 // TODO: 
 // 1. randomise ball reset
 // 2. increase speed on each score ? acceleration ?
 // 3. handle paddle corner collision
+// 4. improve paddle ball collision logic
+
+
+/*
+Turn a vector into a unit direction vector (length = 1), without changing its direction.
+
+Vector length (magnitude):
+|v| = sqrt(x² + y²)
+Normalized vector:
+v̂ = v / |v|
+*/
+void Vector2Normalize(Vector2* v)
+{
+    float len = sqrtf((v->x * v->x) + (v->y * v->y));
+
+    if (len == 0.0f) {
+        v->x = 0;
+        v->y = 0;
+    }
+
+    v->x /= len;
+    v->y /= len;
+}
+
+
+// Multiply a vector by a scalar (stretch or shrink it).
+void Vector2Scale(Vector2* v, float s)
+{
+    v->x *= s;
+    v->y *= s;
+}
 
 
 void random_init(void)
 {
-    time_t t;
-    time(&t);
-    SetRandomSeed((u32)t); 
-
+    SetRandomSeed((unsigned int)time(NULL));
 }
 
 void ball_reset(Ball* ball)
 {
     float y = (float) GetRandomValue(0, HEIGHT);
-    ball->pos = (Vector2){ WIDTH / 2.f, y}; //HEIGHT/ 2.f };
+    ball->pos = (Vector2){ WIDTH / 2.f, y};
 
-    // TODO: fix ball going horizontal
-    float vx = (float) GetRandomValue(-1, 1);
-    if (vx == 0) { vx = BALL_SPEED; }
-    float vy = (float) GetRandomValue(-1, 1);
-    if (vy == 0) { vy = BALL_SPEED; }
-    ball->v = (Vector2){ BALL_SPEED * vx, BALL_SPEED * vy };
+        
+    float vx = (float)GetRandomValue(-100, 100) / 100.0f;
+    float vy = (float)GetRandomValue(-100, 100) / 100.0f;
+
+    ball->dir = (Vector2){ vx, vy };     // direction only 
+    
+    Vector2Normalize(&ball->dir);
+
+    //Vector2Scale(&ball->v, BALL_SPEED); // add speed
 }
 
 void pong_init(GameState* game)
@@ -52,7 +85,6 @@ void pong_init(GameState* game)
 
 void pong_update(GameState* game)
 {
-    // TODO: not working?
     if (IsKeyPressed(KEY_P)) { game->paused = !game->paused; }
     if (game->paused) { return; }
 
@@ -78,15 +110,15 @@ void pong_update(GameState* game)
 
 
     // update ball position based on velocity
-    b->pos.x += b->v.x * dt;
-    b->pos.y += b->v.y * dt;
+    b->pos.x += b->dir.x * BALL_SPEED * dt;
+    b->pos.y += b->dir.y * BALL_SPEED * dt;
 
     //validate ball pos (set boundry up and down)
     if (b->pos.y < 0) {
-        b->v.y *= -1;
+        b->dir.y *= -1;
     }
     if (b->pos.y > HEIGHT) {
-        b->v.y *= -1;
+        b->dir.y *= -1;
     }
 
     // left and right boundry (scoring)
@@ -103,18 +135,23 @@ void pong_update(GameState* game)
     // converting paddle into rect
     Rectangle lrect = (Rectangle){lp->x, lp->y, PADDLE_WIDTH, PADDLE_HEIGHT};
     if (CheckCollisionCircleRec(b->pos, BALL_RADIUS, lrect)) {
-        b->v.x *= -1;
+        b->dir.x *= -1;
     }
-
+    
     Rectangle rrect = (Rectangle){rp->x, rp->y, PADDLE_WIDTH, PADDLE_HEIGHT};
     if (CheckCollisionCircleRec(b->pos, BALL_RADIUS, rrect)) {
-        b->v.x *= -1;
+        b->dir.x *= -1;
     }
+    // When bouncing off a paddle, don’t normalize the reflected vector if you want angle control — normalize after adjusting angle.
 }
 
 void pong_draw(GameState* game)
 {
-    if (game->paused) { return; }
+
+    if (game->paused) {
+        DrawText("PAUSED", (int)(WIDTH / 2) - 80, (int)(HEIGHT/2) - 20, 40, YELLOW);
+    }
+
     BeginDrawing();
     ClearBackground(BLACK);
 

@@ -31,4 +31,4 @@ target_include_directories(main PRIVATE
 )
 
 # Link raylib
-target_link_libraries(main PRIVATE ${RAYLIB_LIB})
+target_link_libraries(main PRIVATE ${RAYLIB_LIB} m)
