@@ -15,8 +15,10 @@
 #define PADDLE_HEIGHT (CELL * 25)
 #define PADDLE_SPEED  (CELL * 25) // pixels per second 
 
-#define BALL_RADIUS (CELL * 2)
-#define BALL_SPEED  (CELL * 50) // pixels per second
+#define BALL_RADIUS     (CELL * 2)
+#define BALL_SPEED      (CELL * 50) // pixels per second
+#define BALL_BOOST      (2.0f)
+#define BALL_SLOWDOWN   (0.2f)      // TODO: make it less to progressively increase difficulty ?
                                
 
 typedef struct {
@@ -36,6 +38,7 @@ typedef struct {
     Paddle  rpaddle;
     u32     lscore;
     u32     rscore;
+    float   precision_xply;
     bool    paused;
 } GameState;
 

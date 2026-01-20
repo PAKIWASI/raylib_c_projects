@@ -1,6 +1,7 @@
 #include "pong.h"
 #include "raylib.h"
 #include <math.h>
+#include <stdbool.h>
 #include <time.h>
 
 
@@ -19,7 +20,8 @@ void random_init(void);
 void ball_reset(Ball* ball);
 void Vector2Normalize(Vector2* v);
 void Vector2Scale(Vector2* v, float s);
-void ball_hit_update(Ball* b, Paddle* p, float dt);
+void paddle_ball_collision(GameState* game, bool is_right);
+float precision_update(Vector2* bpos, Vector2* ppos);
 
 
 void pong_init(GameState* game)
@@ -36,9 +38,10 @@ void pong_init(GameState* game)
     game->rpaddle.pos = (Vector2){ WIDTH - CELL - PADDLE_WIDTH, HEIGHT / 2.f };
 
     // init metadata
-    game->lscore = 0;
-    game->rscore = 0;
-    game->paused = false;
+    game->lscore        = 0;
+    game->rscore        = 0;
+    game->precision_xply = 1.0f;
+    game->paused        = false;
 }
 
 
@@ -47,30 +50,30 @@ void pong_update(GameState* game)
     if (IsKeyPressed(KEY_P)) { game->paused = !game->paused; }
     if (game->paused) { return; }
 
-    Vector2* lp = &game->lpaddle.pos;
-    Vector2* rp = &game->rpaddle.pos;
+    Vector2* lppos = &game->lpaddle.pos;
+    Vector2* rppos = &game->rpaddle.pos;
     Ball* b = &game->ball;
     const float dt = GetFrameTime();
 
 
     // update paddle pos based on key input
-    if (IsKeyDown(KEY_UP))   { lp->y -= PADDLE_SPEED * dt;}
-    if (IsKeyDown(KEY_DOWN)) { lp->y += PADDLE_SPEED * dt;}
-    if (IsKeyDown(KEY_LEFT)) { rp->y -= PADDLE_SPEED * dt;}
-    if (IsKeyDown(KEY_RIGHT)){ rp->y += PADDLE_SPEED * dt;}
+    if (IsKeyDown(KEY_UP))   { lppos->y -= PADDLE_SPEED * dt;}
+    if (IsKeyDown(KEY_DOWN)) { lppos->y += PADDLE_SPEED * dt;}
+    if (IsKeyDown(KEY_LEFT)) { rppos->y -= PADDLE_SPEED * dt;}
+    if (IsKeyDown(KEY_RIGHT)){ rppos->y += PADDLE_SPEED * dt;}
     
 
     // validate paddle pos (clamping)
     // no vertical offset
-    if (lp->y < 0) { lp->y = 0; } 
-    if (lp->y + PADDLE_HEIGHT > HEIGHT) { lp->y = HEIGHT - PADDLE_HEIGHT; } 
-    if (rp->y < 0) { rp->y = 0; } 
-    if (rp->y + PADDLE_HEIGHT > HEIGHT) { rp->y = HEIGHT - PADDLE_HEIGHT; } 
+    if (lppos->y < 0) { lppos->y = 0; } 
+    if (lppos->y + PADDLE_HEIGHT > HEIGHT) { lppos->y = HEIGHT - PADDLE_HEIGHT; } 
+    if (rppos->y < 0) { rppos->y = 0; } 
+    if (rppos->y + PADDLE_HEIGHT > HEIGHT) { rppos->y = HEIGHT - PADDLE_HEIGHT; } 
 
 
     // update ball position based on velocity
-    b->pos.x += b->dir.x * BALL_SPEED * dt;
-    b->pos.y += b->dir.y * BALL_SPEED * dt;
+    b->pos.x += b->dir.x * BALL_SPEED * game->precision_xply * dt;
+    b->pos.y += b->dir.y * BALL_SPEED * game->precision_xply * dt;
 
     //validate ball pos (set boundry up and down)
     if (b->pos.y < 0) { // i like the "bounce" effect
@@ -91,18 +94,8 @@ void pong_update(GameState* game)
     }
 
     // ball-paddle collition check and ball pos update
-    // converting paddle into rect                          
-    Rectangle lrect = (Rectangle){lp->x, lp->y, PADDLE_WIDTH, PADDLE_HEIGHT};
-    if (CheckCollisionCircleRec(b->pos, BALL_RADIUS, lrect)) {
-        // ball_dir_update(&b->dir, lp);
-        b->dir.x *= -1;
-    }
-
-    Rectangle rrect = (Rectangle){rp->x, rp->y, PADDLE_WIDTH, PADDLE_HEIGHT};
-    if (CheckCollisionCircleRec(b->pos, BALL_RADIUS, rrect)) {
-        // ball_dir_update(&b->dir, rp);
-        b->dir.x *= -1;
-    }
+    paddle_ball_collision(game, false); // left
+    paddle_ball_collision(game, true);  // right
 }
 
 void pong_draw(GameState* game)
@@ -187,10 +180,43 @@ void Vector2Scale(Vector2* v, float s)
     v->y *= s;
 }
 
-// close to paddle center->speed increase and vice versa
-void ball_hit_update(Ball* b, Paddle* p, const float dt)
-{
 
+// close to paddle center->speed increase and vice versa
+// when this is called, b and p are colliding
+float precision_update(Vector2* bpos, Vector2* ppos)
+{
+    // calulate distance b/w ball and paddle center
+    // d = sqrt( (x2 - x1)2 + (y2 - y1)2 )
+    float d = sqrtf(((ppos->x + (PADDLE_WIDTH/2.0f) - bpos->x) * (ppos->x + (PADDLE_WIDTH/2.0f) - bpos->x))
+                    + ((ppos->y + (PADDLE_HEIGHT/2.0f) - bpos->y) * (ppos->y + (PADDLE_HEIGHT/2.0f) - bpos->y)));
+
+    // d is between [0, PADDLE_HEIGHT/2]
+    // convert to percentage [0, 0.5] by div by PADDLE_HEIGHT
+    float d_per = d / PADDLE_HEIGHT;
+
+    // from center, 20% up/down is boost region
+    if (d_per >= 0 && d_per < 0.2) {
+        return BALL_BOOST; 
+    }
+    // last 30% up/down is speed decrease
+    if (d_per >= 0.3 && d_per <= 0.5) {
+        return BALL_SLOWDOWN;
+    }
+    // 0.2-0.3 up/down is neutral zone (xplier same)
+    return 1;   // for any anomoly
+}
+
+void paddle_ball_collision(GameState* game, bool is_right)
+{
+    Vector2* ppos = (is_right)? &game->rpaddle.pos : &game->lpaddle.pos;
+    Ball* b = &game->ball;
+
+    // converting paddle into rect                          
+    Rectangle rect = (Rectangle){ppos->x, ppos->y, PADDLE_WIDTH, PADDLE_HEIGHT};
+    if (CheckCollisionCircleRec(b->pos, BALL_RADIUS, rect)) {
+        game->precision_xply = precision_update(&b->pos, ppos);
+        b->dir.x *= -1;
+    }
 }
 
 void random_init(void)
