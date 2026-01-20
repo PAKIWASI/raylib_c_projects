@@ -5,63 +5,22 @@
 
 
 
-// TODO: 
-// 1. randomise ball reset
-// 2. increase speed on each score ? acceleration ?
+// TODO:
 // 3. handle paddle corner collision
-// 4. improve paddle ball collision logic
+// 4. improve paddle ball collision logic 
+//      (center increases speed while side decreases it)
+// 5. when ball/paddle collision, want the ball to "bounce" 
+//      off the paddle (like top/bottom walls)
 
 
-/*
-Turn a vector into a unit direction vector (length = 1), without changing its direction.
-
-Vector length (magnitude):
-|v| = sqrt(x² + y²)
-Normalized vector:
-v̂ = v / |v|
-*/
-void Vector2Normalize(Vector2* v)
-{
-    float len = sqrtf((v->x * v->x) + (v->y * v->y));
-
-    if (len == 0.0f) {
-        v->x = 0;
-        v->y = 0;
-    }
-
-    v->x /= len;
-    v->y /= len;
-}
 
 
-// Multiply a vector by a scalar (stretch or shrink it).
-void Vector2Scale(Vector2* v, float s)
-{
-    v->x *= s;
-    v->y *= s;
-}
+void random_init(void);
+void ball_reset(Ball* ball);
+void Vector2Normalize(Vector2* v);
+void Vector2Scale(Vector2* v, float s);
+void ball_hit_update(Ball* b, Paddle* p, float dt);
 
-
-void random_init(void)
-{
-    SetRandomSeed((unsigned int)time(NULL));
-}
-
-void ball_reset(Ball* ball)
-{
-    float y = (float) GetRandomValue(0, HEIGHT);
-    ball->pos = (Vector2){ WIDTH / 2.f, y};
-
-        
-    float vx = (float)GetRandomValue(-100, 100) / 100.0f;
-    float vy = (float)GetRandomValue(-100, 100) / 100.0f;
-
-    ball->dir = (Vector2){ vx, vy };     // direction only 
-    
-    Vector2Normalize(&ball->dir);
-
-    //Vector2Scale(&ball->v, BALL_SPEED); // add speed
-}
 
 void pong_init(GameState* game)
 {
@@ -114,8 +73,8 @@ void pong_update(GameState* game)
     b->pos.y += b->dir.y * BALL_SPEED * dt;
 
     //validate ball pos (set boundry up and down)
-    if (b->pos.y < 0) {
-        b->dir.y *= -1;
+    if (b->pos.y < 0) { // i like the "bounce" effect
+        b->dir.y *= -1; // half ball goes out of boundry
     }
     if (b->pos.y > HEIGHT) {
         b->dir.y *= -1;
@@ -132,28 +91,29 @@ void pong_update(GameState* game)
     }
 
     // ball-paddle collition check and ball pos update
-    // converting paddle into rect
+    // converting paddle into rect                          
     Rectangle lrect = (Rectangle){lp->x, lp->y, PADDLE_WIDTH, PADDLE_HEIGHT};
     if (CheckCollisionCircleRec(b->pos, BALL_RADIUS, lrect)) {
+        // ball_dir_update(&b->dir, lp);
         b->dir.x *= -1;
     }
-    
+
     Rectangle rrect = (Rectangle){rp->x, rp->y, PADDLE_WIDTH, PADDLE_HEIGHT};
     if (CheckCollisionCircleRec(b->pos, BALL_RADIUS, rrect)) {
+        // ball_dir_update(&b->dir, rp);
         b->dir.x *= -1;
     }
-    // When bouncing off a paddle, don’t normalize the reflected vector if you want angle control — normalize after adjusting angle.
 }
 
 void pong_draw(GameState* game)
 {
+    BeginDrawing();
+    ClearBackground(BLACK);
+
 
     if (game->paused) {
         DrawText("PAUSED", (int)(WIDTH / 2) - 80, (int)(HEIGHT/2) - 20, 40, YELLOW);
     }
-
-    BeginDrawing();
-    ClearBackground(BLACK);
 
     // draw scores
     DrawText(TextFormat("%d", game->lscore), (int)(WIDTH / 4.f), 50, 40, GREEN);
@@ -162,15 +122,15 @@ void pong_draw(GameState* game)
     // draw central line
     DrawLine((int)(WIDTH / 2.f), 0, (int)(WIDTH / 2.f), HEIGHT, RAYWHITE);
 
+    // draw ball
+    DrawCircle((int)game->ball.pos.x, (int)game->ball.pos.y, BALL_RADIUS, RED);
+
     // draw paddles
     DrawRectangle((int)game->lpaddle.pos.x, (int)game->lpaddle.pos.y,
                   (int)PADDLE_WIDTH, (int)PADDLE_HEIGHT, RAYWHITE);
 
     DrawRectangle((int)game->rpaddle.pos.x, (int)game->rpaddle.pos.y,
                   (int)PADDLE_WIDTH, (int)PADDLE_HEIGHT, RAYWHITE);
-
-    // draw ball
-    DrawCircle((int)game->ball.pos.x, (int)game->ball.pos.y, BALL_RADIUS, RED);
 
     EndDrawing();
 }
@@ -196,5 +156,64 @@ void pong_run(void)
 
     pong_end();
 }
+
+/*
+Turn a vector into a unit direction vector (length = 1), without changing its direction.
+
+Vector length (magnitude):
+|v| = sqrt(x² + y²)
+Normalized vector:
+v̂ = v / |v|
+*/
+void Vector2Normalize(Vector2* v)
+{
+    float len = sqrtf((v->x * v->x) + (v->y * v->y));
+
+    if (len == 0.f) {
+        v->x = 0.f;
+        v->y = 0.f;
+        return;
+    }
+
+    v->x /= len;
+    v->y /= len;
+}
+
+
+// Multiply a vector by a scalar (stretch or shrink it).
+void Vector2Scale(Vector2* v, float s)
+{
+    v->x *= s;
+    v->y *= s;
+}
+
+// close to paddle center->speed increase and vice versa
+void ball_hit_update(Ball* b, Paddle* p, const float dt)
+{
+
+}
+
+void random_init(void)
+{
+    SetRandomSeed((unsigned int)time(NULL));
+}
+
+void ball_reset(Ball* ball)
+{
+    float y = (float) GetRandomValue(0, HEIGHT);
+    ball->pos = (Vector2){ WIDTH / 2.f, y};
+
+        
+    // TODO: not too horizontal ?
+    
+    // force horizontal bias
+    float vx = (GetRandomValue(0, 1) == 0) ? -1.0f : 1.0f;
+    float vy = (float)GetRandomValue(-70, 70) / 100.0f;
+
+    ball->dir = (Vector2){ vx, vy };     // direction only 
+    
+    Vector2Normalize(&ball->dir);
+}
+
 
 

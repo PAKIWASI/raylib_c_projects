@@ -3,7 +3,6 @@
 #include "raylib.h"
 #include <stdint.h>
 
-typedef uint32_t u32 ;
 
 #define WIDTH  1200.0f
 #define HEIGHT 800.0f
@@ -23,12 +22,13 @@ typedef uint32_t u32 ;
 typedef struct {
     Vector2 pos; // pixel positins
     Vector2 dir;   // between [-1, 1]. direction only 
-    //Vector2 v;      // this is the scalar speed in each dir
 } Ball;
 
 typedef struct {
     Vector2 pos; // pixel positins
 } Paddle;
+
+typedef uint32_t u32 ;
 
 typedef struct {
     Ball    ball;
