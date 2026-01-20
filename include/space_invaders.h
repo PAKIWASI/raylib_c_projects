@@ -1,7 +1,9 @@
 #pragma once
 
+#include <stdbool.h>
+
 
 typedef struct {
-    
-} SpaceInvaders;
+    bool paused; 
+} SI;
 

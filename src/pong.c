@@ -5,11 +5,11 @@
 
 
 // TODO:
-// 3. handle paddle corner collision
-// 4. improve paddle ball collision logic
-//      (center increases speed while side decreases it)
 // 5. when ball/paddle collision, want the ball to "bounce"
 //      off the paddle (like top/bottom walls)
+// 6. fix ball being completely horizontal
+// 7. change angle of the ball based on where it hits ? ***
+
 
 
 void  random_init(void);
@@ -32,11 +32,14 @@ void pong_init(Pong* pong)
     // init paddles (with offset = CELL)
     pong->lpaddle.pos = (Vector2){CELL, HEIGHT / 2.f};
     pong->rpaddle.pos = (Vector2){WIDTH - CELL - PADDLE_WIDTH, HEIGHT / 2.f};
+    pong->lpaddle.boost = 1;
+    pong->rpaddle.boost = 1;
 
     // init metadata
     pong->lscore         = 0;
     pong->rscore         = 0;
-    pong->precision_xply = 1.0f;
+    // pong->precision_xply = 1.0f;
+    pong->ralley_count   = 1;
     pong->paused         = false;
 }
 
@@ -46,6 +49,8 @@ void pong_update(Pong* pong)
     if (IsKeyPressed(KEY_P)) { pong->paused = !pong->paused; }
     if (pong->paused) { return; }
 
+    Paddle* lp = &pong->lpaddle;
+    Paddle* rp = &pong->rpaddle;
     Vector2*    lppos = &pong->lpaddle.pos;
     Vector2*    rppos = &pong->rpaddle.pos;
     Ball*       b     = &pong->ball;
@@ -53,10 +58,10 @@ void pong_update(Pong* pong)
 
 
     // update paddle pos based on key input
-    if (IsKeyDown(KEY_UP)) { lppos->y -= PADDLE_SPEED * dt; }
-    if (IsKeyDown(KEY_DOWN)) { lppos->y += PADDLE_SPEED * dt; }
-    if (IsKeyDown(KEY_LEFT)) { rppos->y -= PADDLE_SPEED * dt; }
-    if (IsKeyDown(KEY_RIGHT)) { rppos->y += PADDLE_SPEED * dt; }
+    if (IsKeyDown(KEY_UP)) { lppos->y -= PADDLE_SPEED * BOOST_XPLY(pong->ralley_count, lp->boost) * dt; }
+    if (IsKeyDown(KEY_DOWN)) { lppos->y += PADDLE_SPEED * BOOST_XPLY(pong->ralley_count, lp->boost) * dt; }
+    if (IsKeyDown(KEY_LEFT)) { rppos->y -= PADDLE_SPEED * BOOST_XPLY(pong->ralley_count, rp->boost) * dt; }
+    if (IsKeyDown(KEY_RIGHT)) { rppos->y += PADDLE_SPEED * BOOST_XPLY(pong->ralley_count, rp->boost) * dt; }
 
 
     // validate paddle pos (clamping)
@@ -68,8 +73,8 @@ void pong_update(Pong* pong)
 
 
     // update ball position based on velocity
-    b->pos.x += b->dir.x * BALL_SPEED * pong->precision_xply * dt;
-    b->pos.y += b->dir.y * BALL_SPEED * pong->precision_xply * dt;
+    b->pos.x += b->dir.x * BALL_SPEED * BOOST_XPLY(pong->ralley_count, b->boost) * dt;
+    b->pos.y += b->dir.y * BALL_SPEED * BOOST_XPLY(pong->ralley_count, b->boost) * dt;
 
     //validate ball pos (set boundry up and down)
     if (b->pos.y < 0) { // i like the "bounce" effect
@@ -79,12 +84,16 @@ void pong_update(Pong* pong)
 
     // left and right boundry (scoring)
     if (b->pos.x < 0) { // right scored
+        pong->rscore += 1 + pong->ralley_count;
         ball_reset(b);
-        pong->rscore++;
+        pong->ralley_count = 1;
+        rp->boost = 1;
     }
     if (b->pos.x > WIDTH) { // left scored
+        pong->lscore += 1 + pong->ralley_count;
         ball_reset(b);
-        pong->lscore++;
+        pong->ralley_count = 1;
+        lp->boost = 1;
     }
 
     // ball-paddle collition check and ball pos update
@@ -178,6 +187,7 @@ void Vector2Scale(Vector2* v, float s)
 // when this is called, b and p are colliding
 float precision_update(Vector2* bpos, Vector2* ppos)
 {
+    /*
     // calulate distance b/w ball and paddle center
     // d = sqrt( (x2 - x1)2 + (y2 - y1)2 )
     float d = sqrtf(((ppos->x + (PADDLE_WIDTH / 2.0f) - bpos->x) *
@@ -188,11 +198,16 @@ float precision_update(Vector2* bpos, Vector2* ppos)
     // d is between [0, PADDLE_HEIGHT/2]
     // convert to percentage [0, 0.5] by div by PADDLE_HEIGHT
     float d_per = d / PADDLE_HEIGHT;
+    */
+
+    float paddle_center = ppos->y + (PADDLE_HEIGHT / 2.0f);
+    float d = fabsf(bpos->y - paddle_center);
+    float d_per = d / (PADDLE_HEIGHT / 2.0f); // Now 0 = center, 1 = edge
 
     // from center, 20% up/down is boost region
-    if (d_per >= 0 && d_per < 0.2) { return BALL_BOOST; }
+    if (d_per >= 0 && d_per < 0.2) { return BOOST; }
     // last 30% up/down is speed decrease
-    if (d_per >= 0.3 && d_per <= 0.5) { return BALL_SLOWDOWN; }
+    if (d_per >= 0.3 && d_per <= 0.5) { return SLOWDOWN; }
     // 0.2-0.3 up/down is neutral zone (xplier same)
     return 1; // for any anomoly
 }
@@ -205,10 +220,16 @@ void paddle_ball_collision(Pong* pong, bool is_right)
     // converting paddle into rect
     Rectangle rect = (Rectangle){ppos->x, ppos->y, PADDLE_WIDTH, PADDLE_HEIGHT};
     if (CheckCollisionCircleRec(b->pos, BALL_RADIUS, rect)) {
-        pong->precision_xply = precision_update(&b->pos, ppos);
+
+        Paddle* p = (is_right) ? &pong->rpaddle : &pong->lpaddle;
+        float boost = precision_update(&b->pos, ppos);
+        p->boost = boost;
+        b->boost = boost;
+
         b->dir.x *= -1;
         float safety_offset = is_right ? -(BALL_RADIUS/2.0f) : (BALL_RADIUS/2.0f);
         b->pos.x += safety_offset;
+        pong->ralley_count++;
     }
 }
 
@@ -221,7 +242,7 @@ void ball_reset(Ball* ball)
 {
     float y   = (float)GetRandomValue(0, HEIGHT);
     ball->pos = (Vector2){WIDTH / 2.f, y};
-
+    ball->boost = 1;
 
     // TODO: not too horizontal ?
 
