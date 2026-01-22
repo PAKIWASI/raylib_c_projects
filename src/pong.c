@@ -7,7 +7,6 @@
 // TODO:
 // 5. when ball/paddle collision, want the ball to "bounce"
 //      off the paddle (like top/bottom walls)
-// 6. fix ball being completely horizontal
 // 7. change angle of the ball based on where it hits ? ***
 
 
