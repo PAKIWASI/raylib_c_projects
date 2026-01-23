@@ -1,7 +1,7 @@
-#include "pong.h"
 
 
+#include "space_invaders.h"
 int main(void) 
 {
-    pong_run();
+    si_run();
 }
