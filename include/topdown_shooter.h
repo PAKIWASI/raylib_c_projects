@@ -1,8 +1,8 @@
 #ifndef TOPDOWN_SHOOTER_H
 #define TOPDOWN_SHOOTER_H
 
-#include "raylib.h"
-#include "genVec.h"
+#include "genVec_entities.h"
+#include <raylib.h>
 
 
 // Game Config
@@ -11,11 +11,14 @@
 #define HEIGHT 800.0f
 #define TITLE  "shoot"
 #define FPS    60
-#define CELL 10.0f // base size unit
+#define CELL   10.0f // base size unit
 
 // Game Settings
 //=============================
-#define P_SPEED 10.0f
+#define P_WIDTH      (CELL)
+#define P_HEIGHT     (CELL * 2)
+#define P_MAX_HEALTH 10
+#define P_SPEED      20.0f
 
 #define B_SPEED 50.0f
 
@@ -30,25 +33,22 @@
 typedef struct {
     Vector2 pos;
     Vector2 dir;
-    u32 health; 
+    u32     health;
 } Player;
 
 // bullet : TDS keeps track of fired bullets, dynamic entities (malloced) use genVec?
-typedef struct {
-    Vector2 pos; 
-    Vector2 dir;
-} Bullet;
+// typedef struct {
+//     Vector2 pos;
+//     Vector2 dir;
+// } Bullet;
 
 
 // Game State
 //=============================
 typedef struct {
-    genVec bullets; // Bullet type
-     
+    genVec players;
+    // genVec bullets; // Bullet type
 } TDS;
-
-
-
 
 
 void TDS_run(void);
