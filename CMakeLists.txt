@@ -1,13 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 
-set(CMAKE_C_COMPILER clang)
+set(CMAKE_CXX_COMPILER clang++)
 
-project(raylib_proj LANGUAGES C)
+project(raylib_proj LANGUAGES CXX)
 
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 
 
 # Define raylib location
@@ -25,28 +24,29 @@ endif()
 # Default to Debug if not specified
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+  # set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 # Debug: sanitizers + no optimisation
-set(CMAKE_C_FLAGS_DEBUG   "-g -O0 -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined")
+set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0 -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined")
 set(CMAKE_EXE_LINKER_FLAGS_DEBUG   "-fsanitize=address -fsanitize=undefined")
 
 # Release: full optimisation
-set(CMAKE_C_FLAGS_RELEASE   "-O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE   "-O3 -DNDEBUG")
 set(CMAKE_EXE_LINKER_FLAGS_RELEASE "")
 
 
 
 # source files list
 set(SRC_FILES
-    src/entity.c
+    # src/entity.cpp
 )
 
 # main exe 
 add_executable(main 
-    src/ray_main.c
+    src/ray_main.cpp
     ${SRC_FILES}
 )
 

@@ -1,9 +1,7 @@
 CompileFlags:
   CompilationDatabase: build/
   Add:
-    - -std=c99
-    - -Wstrict-prototypes
-    - -Wconversion  # can be noisy
+    - "-std=c++23"
 
 Diagnostics:
   ClangTidy:
@@ -11,15 +9,18 @@ Diagnostics:
       - bugprone-*
       - cert-*
       - clang-analyzer-*
+      - cppcoreguidelines-*
+      - modernize-*
       - performance-*
       - portability-*
       - readability-*
     Remove:
-      # Too noisy
       - readability-magic-numbers
       - readability-identifier-length
       - readability-function-cognitive-complexity
-      - readability-uppercase-literal-suffix
-      - readability-identifier-naming  
+
+      - modernize-use-trailing-return-type
+
       - bugprone-easily-swappable-parameters
-      - cert-err33-c                  
+
+      - cppcoreguidelines-avoid-magic-numbers
