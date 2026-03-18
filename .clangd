@@ -1,7 +1,7 @@
 CompileFlags:
   CompilationDatabase: build/
   Add:
-    - "-std=c++23"
+    - "-std=c++20"
 
 Diagnostics:
   ClangTidy:
@@ -22,5 +22,3 @@ Diagnostics:
       - modernize-use-trailing-return-type
 
       - bugprone-easily-swappable-parameters
-
-      - cppcoreguidelines-avoid-magic-numbers
