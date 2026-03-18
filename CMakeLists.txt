@@ -46,7 +46,7 @@ set(SRC_FILES
 
 # main exe 
 add_executable(main 
-    src/main.c
+    src/ray_main.c
     ${SRC_FILES}
 )
 
