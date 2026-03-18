@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
+
+set(CMAKE_C_COMPILER clang)
+
 project(raylib_proj LANGUAGES C)
 
-set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_COMPILER clang)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 
 
 # Define raylib location
@@ -19,16 +22,42 @@ endif()
 
 
 
-file(GLOB SRC_FILES "${CMAKE_SOURCE_DIR}/src/*.c")
+# Default to Debug if not specified
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+endif()
 
-# add source files
-add_executable(main ${SRC_FILES})
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-# Include raylib headers (and yours)
+# Debug: sanitizers + no optimisation
+set(CMAKE_C_FLAGS_DEBUG   "-g -O0 -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined")
+set(CMAKE_EXE_LINKER_FLAGS_DEBUG   "-fsanitize=address -fsanitize=undefined")
+
+# Release: full optimisation
+set(CMAKE_C_FLAGS_RELEASE   "-O3 -DNDEBUG")
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE "")
+
+
+
+# source files list
+set(SRC_FILES
+    src/entity.c
+)
+
+# main exe 
+add_executable(main 
+    src/main.c
+    ${SRC_FILES}
+)
+
+# Include raylib headers, plus ours
 target_include_directories(main PRIVATE 
     ${RAYLIB_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 # Link raylib
-target_link_libraries(main PRIVATE ${RAYLIB_LIB} m)
+target_link_libraries(main PRIVATE ${RAYLIB_LIB})
+
+
+
