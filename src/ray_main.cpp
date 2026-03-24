@@ -1,20 +1,34 @@
-#include <iostream>
-#include <vector>
+#include <cstdint>
+#include <raylib.h>
+#include <termios.h>
+
+using u32 = uint32_t;
+using u64 = uint64_t;
+
+constexpr u32         width  = 800;
+constexpr u32         height = 600;
+constexpr const char* title  = "game";
+
+constexpr u32 cell = 10;
 
 
 auto main() -> int
 {
-    std::vector<int> v;
+    termios term = {};
 
-    v.emplace_back(1);
-    v.push_back(1);
-    v.emplace_back(1);
-    v.emplace_back(1);
+    cfgetospeed(&term);
 
-    for (auto i : v) {
-        std::cout << i << '\n';
+    InitWindow(width, height, title);
+    SetTargetFPS(60);
+
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+
+        ClearBackground({.r = 0, .g = 255, .b = 255, .a = 1});
+        DrawFPS(cell, cell);
+
+        EndDrawing();
     }
 
-
-    return 0;
+    CloseWindow();
 }
